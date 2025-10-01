@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  name      String?
+  password  String
+  avatar    String?
+  rating    Int      @default(1200)
+  wins      Int      @default(0)
+  losses    Int      @default(0)
+  draws     Int      @default(0)
+  isOnline  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  whiteGames Game[] @relation("WhitePlayer")
+  blackGames Game[] @relation("BlackPlayer")
+  wonGames   Game[] @relation("Winner")
+  messages   GameMessage[]
+  gameRequests GameRequest[] @relation("Requester")
+  gameInvites GameInvite[] @relation("Inviter")
+  gameInvitesReceived GameInvite[] @relation("Invitee")
+  gameSpectators GameSpectator[]
+  lobbies Lobby[] @relation("LobbyCreator")
+
+  @@map("users")
+}
+
+model Game {
+  id              String      @id @default(cuid())
+  status          GameStatus  @default(PENDING)
+  currentFen      String      @default("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+  moves           String[]    @default([])
+  lastMove        String[]
+  turn            Color       @default(WHITE)
+  winnerColor     Color?
+  check           Boolean     @default(false)
+  checkmate       Boolean     @default(false)
+  stalemate       Boolean     @default(false)
+  draw            Boolean     @default(false)
+  timeControl     String      @default("5+0") // "5+0", "10+5", "15+10", etc.
+  whiteTimeLeft   Int?        // seconds
+  blackTimeLeft   Int?        // seconds
+  isPublic        Boolean     @default(true)
+  isRated         Boolean     @default(true)
+  allowSpectators Boolean     @default(true)
+  whitePlayerId   String?
+  blackPlayerId   String?
+  winnerId        String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  startedAt       DateTime?
+  endedAt         DateTime?
+
+  // Relations
+  whitePlayer User? @relation("WhitePlayer", fields: [whitePlayerId], references: [id])
+  blackPlayer User? @relation("BlackPlayer", fields: [blackPlayerId], references: [id])
+  winner      User? @relation("Winner", fields: [winnerId], references: [id])
+  messages    GameMessage[]
+  spectators  GameSpectator[]
+  requests    GameRequest[]
+  invites     GameInvite[]
+
+  @@map("games")
+}
+
+model GameMessage {
+  id        String      @id @default(cuid())
+  gameId    String
+  userId    String
+  content   String
+  type      MessageType @default(CHAT)
+  createdAt DateTime    @default(now())
+
+  // Relations
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("game_messages")
+}
+
+model GameSpectator {
+  id      String @id @default(cuid())
+  gameId  String
+  userId  String
+  joinedAt DateTime @default(now())
+
+  // Relations
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([gameId, userId])
+  @@map("game_spectators")
+}
+
+model GameRequest {
+  id        String        @id @default(cuid())
+  gameId    String
+  userId    String
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relations
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation("Requester", fields: [userId], references: [id])
+
+  @@map("game_requests")
+}
+
+model GameInvite {
+  id        String        @id @default(cuid())
+  gameId    String
+  inviterId String
+  inviteeId String
+  status    InviteStatus  @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relations
+  game    Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  inviter User @relation("Inviter", fields: [inviterId], references: [id])
+  invitee User @relation("Invitee", fields: [inviteeId], references: [id])
+
+  @@map("game_invites")
+}
+
+model Lobby {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  maxPlayers  Int        @default(2)
+  currentPlayers Int     @default(0)
+  isPublic    Boolean    @default(true)
+  timeControl String     @default("5+0")
+  isRated     Boolean    @default(true)
+  createdBy   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  creator User @relation("LobbyCreator", fields: [createdBy], references: [id])
+
+  @@map("lobbies")
+}
+
+// Enums
+enum GameStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  ABANDONED
+  DRAW
+  TIMEOUT
+}
+
+enum Color {
+  WHITE
+  BLACK
+}
+
+enum MessageType {
+  CHAT
+  MOVE
+  SYSTEM
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
