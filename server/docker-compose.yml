@@ -1,47 +1,160 @@
 version: '3.8'
 
 services:
+  # Main Application
   app:
-    build: .
+    build: 
+      context: .
+      target: production
     ports:
-      - '3000:3000'
-    restart: always
+      - '3000:3000'  # API port
+      - '3001:3001'  # WebSocket port
+    restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/chess_arena
+      - REDIS_URL=redis://redis:6379
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chess-arena-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # Database
   postgres:
-    image: postgres:latest
-    container_name: postgres
+    image: postgres:15-alpine
+    container_name: chess-arena-postgres
     ports:
       - '5432:5432'
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: chess_arena
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./prisma/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - chess-arena-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chess_arena"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # Redis Cache & Queue
   redis:
-    image: redis:latest
-    container_name: redis
+    image: redis:7-alpine
+    container_name: chess-arena-redis
     ports:
       - '6379:6379'
-    restart: always
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - chess-arena-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
+  # Redis Commander (Redis GUI)
   redis-commander:
     image: rediscommander/redis-commander:latest
-    container_name: redis-commander
+    container_name: chess-arena-redis-commander
     ports:
       - '8081:8081'
-    restart: always
+    restart: unless-stopped
     environment:
-      REDIS_HOSTS: local:redis:6379
+      - REDIS_HOSTS=local:redis:6379
     depends_on:
       - redis
+    networks:
+      - chess-arena-network
+
+  # Bull Board (Queue Monitoring)
+  bull-board:
+    build:
+      context: .
+      dockerfile: Dockerfile.bull-board
+    container_name: chess-arena-bull-board
+    ports:
+      - '8080:8080'
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - chess-arena-network
+
+  # pgAdmin (PostgreSQL GUI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: chess-arena-pgadmin
+    ports:
+      - '8082:80'
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@chessarena.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    depends_on:
+      - postgres
+    networks:
+      - chess-arena-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  # Adminer (Alternative PostgreSQL GUI)
+  adminer:
+    image: adminer:latest
+    container_name: chess-arena-adminer
+    ports:
+      - '8083:8080'
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - chess-arena-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: chess-arena-nginx
+    ports:
+      - '80:80'
+      - '443:443'
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - chess-arena-network
+
+networks:
+  chess-arena-network:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local

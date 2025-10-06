@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "esnext",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@filters/*": ["src/common/filters/*"],
+      "@guards/*": ["./src/guards/*"],
+      "@pipes/*": ["./src/pipes/*"],
+      "@interceptors/*": ["src/common/interceptors/*"],
+      "@interfaces/*": ["./src/common/interfaces/*"],
+      "@decorators/*": ["./src/common/decorators/*"],
+      "@tests/*": ["./src/tests/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@providers/*": ["./src/providers/*"],
+      "@config/*": ["./src/config/*"],
+      "@helpers/*": ["./src/helpers/*"],
+      "@types/*": ["./src/types/*"],
+      "@constants/*": ["./src/common/constants/*"],
+      "@common/*": ["./src/common/*"]
+    }
+  }
+}

@@ -45,11 +45,17 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
+      if (tokenData.type == 'Basic') {
+        await this.authService.getAccessTokenClientAuth(tokenData.token);
+      }
+
       if (tokenData.type == 'Bearer') {
+        await this.tokenService.getAccessTokenFromWhitelist(tokenData.token);
+
         // 💡 We're assigning the payload to the request object here
         // so that we can access it in our route handlers
         request['user'] = await this.jwtService.verifyAsync(tokenData.token, {
-          secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
+          secret: this.configService.get<string>('jwt.accessToken'),
         });
         request['user']._meta = {
           accessToken: tokenData.token,
