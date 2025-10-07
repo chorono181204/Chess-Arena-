@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { ChessLobbyGameList } from './chess-lobby-game-list'
 import { ChessLobbyCreateGame } from './chess-lobby-create-game'
 import { ChessLobbyQuickMatch } from './chess-lobby-quick-match'
+import { useSound } from '@/lib/use-sound'
 
 type LobbyTab = 'browse' | 'create' | 'quick'
 
@@ -16,6 +17,7 @@ export const ChessLobby: React.FC = () => {
   const [activeTab, setActiveTab] = useState<LobbyTab>('browse')
   const isMobile = useDeviceWidth() < 768
   const { user } = useAuth()
+  const { playClick } = useSound()
 
   const tabs = [
     { id: 'browse' as const, label: 'Browse Games', icon: Search },
@@ -44,7 +46,10 @@ export const ChessLobby: React.FC = () => {
                 key={tab.id}
                 variant={activeTab === tab.id ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  playClick()
+                  setActiveTab(tab.id)
+                }}
                 className="flex items-center gap-2"
               >
                 <Icon className="size-4" />

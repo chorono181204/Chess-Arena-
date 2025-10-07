@@ -5,6 +5,7 @@ import { useGetPublicGames } from '@/lib/use-get-public-games'
 import { Users, User } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { GameFilters } from './game-filters'
+import { useSound } from '@/lib/use-sound'
 
 interface GameRoom {
   id: string
@@ -33,6 +34,7 @@ export const ChessLobbyGameList: React.FC = () => {
     ratingRange: []
   })
   const [searchQuery, setSearchQuery] = useState('')
+  const { playClick } = useSound()
 
   const handleJoinGame = (gameId: string) => {
     // TODO: Implement join game logic
@@ -159,7 +161,10 @@ export const ChessLobbyGameList: React.FC = () => {
                     {game.whitePlayer.id !== user?.id ? (
                       <Button
                         size="sm"
-                        onClick={() => handleJoinGame(game.id)}
+                        onClick={() => {
+                          playClick()
+                          handleJoinGame(game.id)
+                        }}
                         className="bg-green-600 hover:bg-green-700"
                       >
                         Join Game
@@ -172,7 +177,10 @@ export const ChessLobbyGameList: React.FC = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleSpectateGame(game.id)}
+                      onClick={() => {
+                        playClick()
+                        handleSpectateGame(game.id)
+                      }}
                     >
                       Spectate
                     </Button>

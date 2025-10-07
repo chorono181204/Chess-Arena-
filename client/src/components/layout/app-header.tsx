@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { useSound } from '@/lib/use-sound'
 
 interface NavItem {
   path: string
@@ -33,6 +34,7 @@ export const AppHeader: React.FC = () => {
   const navigate = useNavigate()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { playClick } = useSound()
 
   const handleLogout = async () => {
     try {
@@ -80,7 +82,10 @@ export const AppHeader: React.FC = () => {
                   key={item.path}
                   variant={isActive ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => navigate(item.path)}
+                  onClick={() => {
+                    playClick()
+                    navigate(item.path)
+                  }}
                   className={cn(
                     "flex items-center gap-2 transition-colors",
                     isActive 
@@ -178,6 +183,7 @@ export const AppHeader: React.FC = () => {
                     variant={isActive ? "default" : "ghost"}
                     size="sm"
                     onClick={() => {
+                      playClick()
                       navigate(item.path)
                       setIsMobileMenuOpen(false)
                     }}

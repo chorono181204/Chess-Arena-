@@ -1,17 +1,14 @@
-import { User } from '@prisma/client';
+import type { User } from '@prisma/client';
 
 export default class UserEntity implements User {
   id: string;
   email: string;
-  username: string;
-  name: string | null;
+  name: string;
   password: string;
-  avatar: string | null;
-  rating: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  isOnline: boolean;
+  avatar: string;
+  isActive: boolean;
+  isVerified: boolean;
+  lastLoginAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }

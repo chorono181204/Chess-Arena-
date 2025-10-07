@@ -1,0 +1,53 @@
+FROM node:lts-alpine
+
+LABEL description="Chess Arena Bull Board - Queue Monitoring Dashboard"
+
+WORKDIR /usr/src/app
+
+# Initialize project and install local dependencies (not global)
+RUN npm init -y \
+ && npm install --save @bull-board/api @bull-board/express bullmq ioredis express
+
+# Create bull board configuration
+RUN echo 'const { createBullBoard } = require("@bull-board/api");' > bull-board.js && \
+    echo 'const { BullMQAdapter } = require("@bull-board/api/bullMQAdapter");' >> bull-board.js && \
+    echo 'const { ExpressAdapter } = require("@bull-board/express");' >> bull-board.js && \
+    echo 'const { Queue } = require("bullmq");' >> bull-board.js && \
+    echo 'const express = require("express");' >> bull-board.js && \
+    echo '' >> bull-board.js && \
+    echo 'const app = express();' >> bull-board.js && \
+    echo 'const serverAdapter = new ExpressAdapter();' >> bull-board.js && \
+    echo 'serverAdapter.setBasePath("/admin/queues");' >> bull-board.js && \
+    echo '' >> bull-board.js && \
+    echo 'const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";' >> bull-board.js && \
+    echo '' >> bull-board.js && \
+    echo '// Create queues' >> bull-board.js && \
+    echo 'const matchmakingQueue = new Queue("matchmaking-queue", { connection: { url: redisUrl } });' >> bull-board.js && \
+    echo 'const gameQueue = new Queue("game-queue", { connection: { url: redisUrl } });' >> bull-board.js && \
+    echo 'const notificationQueue = new Queue("notification-queue", { connection: { url: redisUrl } });' >> bull-board.js && \
+    echo '' >> bull-board.js && \
+    echo '// Create bull board' >> bull-board.js && \
+    echo 'createBullBoard({' >> bull-board.js && \
+    echo '  queues: [' >> bull-board.js && \
+    echo '    new BullMQAdapter(matchmakingQueue),' >> bull-board.js && \
+    echo '    new BullMQAdapter(gameQueue),' >> bull-board.js && \
+    echo '    new BullMQAdapter(notificationQueue),' >> bull-board.js && \
+    echo '  ],' >> bull-board.js && \
+    echo '  serverAdapter: serverAdapter,' >> bull-board.js && \
+    echo '});' >> bull-board.js && \
+    echo '' >> bull-board.js && \
+    echo 'app.use("/admin/queues", serverAdapter.getRouter());' >> bull-board.js && \
+    echo '' >> bull-board.js && \
+    echo 'app.get("/health", (req, res) => {' >> bull-board.js && \
+    echo '  res.json({ status: "ok", timestamp: new Date().toISOString() });' >> bull-board.js && \
+    echo '});' >> bull-board.js && \
+    echo '' >> bull-board.js && \
+    echo 'const PORT = process.env.PORT || 8080;' >> bull-board.js && \
+    echo 'app.listen(PORT, () => {' >> bull-board.js && \
+    echo '  console.log(`Bull Board running on port ${PORT}`);' >> bull-board.js && \
+    echo '});' >> bull-board.js
+
+EXPOSE 8080
+
+CMD ["node", "bull-board.js"]
+

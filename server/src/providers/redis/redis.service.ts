@@ -53,22 +53,4 @@ export class RedisService {
 
     return result === 'OK';
   }
-
-  // Pub/Sub methods for event-driven architecture
-  async publish(channel: string, message: string): Promise<number> {
-    return await this.redisClient.publish(channel, message);
-  }
-
-  async subscribe(channel: string, callback: (message: string) => void): Promise<void> {
-    await this.redisClient.subscribe(channel);
-    this.redisClient.on('message', (receivedChannel, message) => {
-      if (receivedChannel === channel) {
-        callback(message);
-      }
-    });
-  }
-
-  async unsubscribe(channel: string): Promise<void> {
-    await this.redisClient.unsubscribe(channel);
-  }
 }

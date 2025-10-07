@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: chess-arena-postgres-dev
+    ports:
+      - '5433:5432'
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: chess_arena
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - chess-arena-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chess_arena"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: chess-arena-redis-dev
+    ports:
+      - '6379:6379'
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - chess-arena-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Redis Commander (Redis GUI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: chess-arena-redis-commander-dev
+    ports:
+      - '8081:8081'
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - chess-arena-network
+
+  # pgAdmin (PostgreSQL GUI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: chess-arena-pgadmin-dev
+    ports:
+      - '8082:80'
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@chessarena.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    depends_on:
+      - postgres
+    networks:
+      - chess-arena-network
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+
+  # Bull Board (Queue Monitoring)
+  bull-board:
+    build:
+      context: .
+      dockerfile: Dockerfile.bull-board
+    container_name: chess-arena-bull-board-dev
+    ports:
+      - '8084:8080'
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - chess-arena-network
+
+networks:
+  chess-arena-network:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  pgadmin_dev_data:
+    driver: local

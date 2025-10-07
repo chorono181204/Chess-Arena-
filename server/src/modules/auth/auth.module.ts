@@ -2,30 +2,14 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
 import { AuthController } from './auth.controller';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { PassportModule } from '@nestjs/passport';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { PrismaModule } from '../database/prisma.module';
+import { UserRepository } from '@modules/user/user.repository';
+import { TokenRepository } from './token.repository';
+import { RedisModule } from '@providers/redis';
 
 @Module({
-  imports: [
-    PrismaModule,
-    PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1h',
-        },
-      }),
-      inject: [ConfigService],
-    }),
-  ],
+  imports: [RedisModule],
   controllers: [AuthController],
-  providers: [AuthService, TokenService, JwtStrategy, JwtAuthGuard],
-  exports: [AuthService, TokenService, JwtAuthGuard],
+  providers: [AuthService, TokenService, UserRepository, TokenRepository],
+  exports: [AuthService],
 })
 export class AuthModule {}
