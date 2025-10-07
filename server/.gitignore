@@ -92,3 +92,5 @@ dump.rdb
 
 # BullMQ
 bull-queue/
+
+summarize/
