@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -28,6 +27,7 @@ export const ChessLobbyQuickMatch: React.FC = () => {
   const [foundMatch, setFoundMatch] = useState<any>(null)
   const [showMatchDialog, setShowMatchDialog] = useState(false)
   const [declineTimer, setDeclineTimer] = useState(30)
+  const [hasPlayedMatchFound, setHasPlayedMatchFound] = useState(false)
   const [settings, setSettings] = useState<QuickMatchSettings>({
     timeControl: '10+0',
     ratingRange: 'any',
@@ -46,6 +46,22 @@ export const ChessLobbyQuickMatch: React.FC = () => {
     }
     return () => clearInterval(interval)
   }, [isSearching])
+
+  // Stop waiting sound only when search state turns off
+  useEffect(() => {
+    if (!isSearching) {
+      sound.stopSound('waitMatch')
+    }
+  }, [isSearching])
+
+  // When match dialog opens, ensure wait-match stops and play match-found once
+  useEffect(() => {
+    if (showMatchDialog && !hasPlayedMatchFound) {
+      sound.stopSound('waitMatch')
+      sound.playMatchFound()
+      setHasPlayedMatchFound(true)
+    }
+  }, [showMatchDialog, hasPlayedMatchFound])
 
   // Auto-decline timer effect
   useEffect(() => {
@@ -72,9 +88,11 @@ export const ChessLobbyQuickMatch: React.FC = () => {
     }
 
     sound.playClick()
-    sound.playSearchStart()
+    //sound.playSearchStart()
+    sound.playWaitMatch()
     setIsSearching(true)
     setSearchTime(0)
+    setHasPlayedMatchFound(false)
     
     try {
       const game = await quickMatch.mutateAsync({
@@ -84,11 +102,12 @@ export const ChessLobbyQuickMatch: React.FC = () => {
       })
 
       if (game) {
-        sound.playMatchFound()
+        // stop waiting sound when a match is found and open dialog
+        sound.stopSound('waitMatch')
+        setIsSearching(false)
         setFoundMatch(game)
         setShowMatchDialog(true)
         setDeclineTimer(30)
-        setIsSearching(false)
       } else {
         // Continue searching - don't stop
         sound.playCountdown()
@@ -101,6 +120,8 @@ export const ChessLobbyQuickMatch: React.FC = () => {
         }, 2000)
       }
     } catch (error) {
+      // ensure waiting sound stops on error
+      sound.stopSound('waitMatch')
       sound.playError()
       toast.error('Failed to find match')
       console.error('Quick match error:', error)
@@ -111,6 +132,8 @@ export const ChessLobbyQuickMatch: React.FC = () => {
   const handleCancelSearch = () => {
     sound.playClick()
     sound.playSearchEnd()
+    // stop waiting sound when user cancels
+    sound.stopSound('waitMatch')
     setIsSearching(false)
     setSearchTime(0)
     toast.info('Search cancelled')
@@ -134,6 +157,8 @@ export const ChessLobbyQuickMatch: React.FC = () => {
     setFoundMatch(null)
     // Continue searching
     setIsSearching(true)
+    sound.playWaitMatch()
+    setHasPlayedMatchFound(false)
   }
 
   const formatSearchTime = (seconds: number) => {

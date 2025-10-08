@@ -6,9 +6,9 @@
 logs
 *.log
 npm-debug.log*
-pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 lerna-debug.log*
 
 # OS
@@ -37,3 +37,23 @@ lerna-debug.log*
 
 # Prisma
 /prisma/migrations/**/*.sql
+
+# PM2
+ecosystem.config.js
+
+# Temporary folders
+tmp/
+temp/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis dumps
+dump.rdb
+
+# BullMQ
+bull-queue/
+
+summarize/

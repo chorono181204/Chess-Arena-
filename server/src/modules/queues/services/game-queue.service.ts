@@ -21,32 +21,48 @@ export class GameQueue {
     userId: string;
     move: string;
   }) {
-    return await this.gameQueue.add('process-move', data, {
+    return await this.gameQueue.add(
+      'process-move',
+      { ...data, action: 'process-move' },
+      {
       priority: 1,
-    });
+      },
+    );
   }
 
-  async addUpdateRatingJob(data: { gameId: string }) {
-    return await this.gameQueue.add('update-rating', data, {
+  async addUpdateRatingJob(data: { gameId: string; userId: string }) {
+    return await this.gameQueue.add(
+      'update-rating',
+      { ...data, action: 'update-rating' },
+      {
       priority: 5,
       delay: 1000, // Wait 1 second after game ends
-    });
+      },
+    );
   }
 
-  async addCleanupGameJob(data: { gameId: string }) {
-    return await this.gameQueue.add('cleanup-game', data, {
+  async addCleanupGameJob(data: { gameId: string; userId: string }) {
+    return await this.gameQueue.add(
+      'cleanup-game',
+      { ...data, action: 'cleanup-game' },
+      {
       priority: 10,
       delay: 300000, // Wait 5 minutes after game ends
-    });
+      },
+    );
   }
 
-  async addCheckTimeoutJob(data: { gameId: string }) {
-    return await this.gameQueue.add('check-timeout', data, {
+  async addCheckTimeoutJob(data: { gameId: string; userId: string }) {
+    return await this.gameQueue.add(
+      'check-timeout',
+      { ...data, action: 'check-timeout' },
+      {
       priority: 2,
       repeat: {
         every: 1000, // Check every second
       },
-    });
+      },
+    );
   }
 
   async removeGameJobs(gameId: string) {

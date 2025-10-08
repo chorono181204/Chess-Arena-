@@ -14,11 +14,13 @@ export interface MatchmakingJobData {
   };
 }
 
+type MatchmakingJobPayload = MatchmakingJobData | { userId: string };
+
 @Injectable()
 export class MatchmakingQueue {
   constructor(
     @InjectQueue('matchmaking')
-    private matchmakingQueue: Queue<MatchmakingJobData>,
+    private matchmakingQueue: Queue<MatchmakingJobPayload>,
   ) {}
 
   async addFindMatchJob(data: MatchmakingJobData) {

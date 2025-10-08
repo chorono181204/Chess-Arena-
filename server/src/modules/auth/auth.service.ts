@@ -56,8 +56,7 @@ export class AuthService {
 
     return this.tokenService.sign({
       id: testUser.id,
-      firstName: testUser.firstName,
-      lastName: testUser.lastName,
+      name: testUser.name,
       email: testUser.email,
     });
   }

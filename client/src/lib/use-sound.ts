@@ -46,6 +46,7 @@ export const useSound = () => {
   const playSearchStart = () => playSound('searchStart', '/sounds/search-start.mp3', { volume: 0.3 })
   const playSearchEnd = () => playSound('searchEnd', '/sounds/search-end.mp3', { volume: 0.3 })
   const playCountdown = () => playSound('countdown', '/sounds/countdown.mp3', { volume: 0.2 })
+  const playWaitMatch = () => playSound('waitMatch', '/sounds/wait-match.mp3', { volume: 0.3 })
   
   // Match Sounds
   const playMatchFound = () => playSound('matchFound', '/sounds/match-found.mp3', { volume: 0.6 })
@@ -66,6 +67,7 @@ export const useSound = () => {
     playSearchStart,
     playSearchEnd,
     playCountdown,
+    playWaitMatch,
     playMatchFound,
     playMatchAccepted,
     playMatchDeclined,

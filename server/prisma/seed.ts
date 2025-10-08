@@ -15,9 +15,7 @@ async function main() {
       update: {},
       create: {
         email: 'alice@chessarena.com',
-        username: 'alice_chess',
-        firstName: 'Alice',
-        lastName: 'Johnson',
+        name: 'Alice Johnson',
         password: hashedPassword,
         isVerified: true,
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice',
@@ -28,9 +26,7 @@ async function main() {
       update: {},
       create: {
         email: 'bob@chessarena.com',
-        username: 'bob_master',
-        firstName: 'Bob',
-        lastName: 'Smith',
+        name: 'Bob Smith',
         password: hashedPassword,
         isVerified: true,
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob',
@@ -41,9 +37,7 @@ async function main() {
       update: {},
       create: {
         email: 'charlie@chessarena.com',
-        username: 'charlie_gm',
-        firstName: 'Charlie',
-        lastName: 'Brown',
+        name: 'Charlie Brown',
         password: hashedPassword,
         isVerified: true,
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie',
@@ -54,9 +48,7 @@ async function main() {
       update: {},
       create: {
         email: 'diana@chessarena.com',
-        username: 'diana_queen',
-        firstName: 'Diana',
-        lastName: 'Wilson',
+        name: 'Diana Wilson',
         password: hashedPassword,
         isVerified: true,
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=diana',
@@ -158,9 +150,7 @@ async function main() {
         timeControl: '10+5',
         isRated: true,
         isPublic: true,
-        allowSpectators: true,
         currentFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-        moves: ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4', 'f8c5'],
         lastMove: 'f8c5',
         turn: 'WHITE',
         winner: 'WHITE',
@@ -183,9 +173,7 @@ async function main() {
         timeControl: '5+0',
         isRated: false,
         isPublic: true,
-        allowSpectators: true,
         currentFen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
-        moves: ['e2e4', 'e7e5'],
         lastMove: 'e7e5',
         turn: 'WHITE',
         whiteTimeLeft: 280000, // 4.67 minutes
@@ -204,7 +192,6 @@ async function main() {
         timeControl: '15+10',
         isRated: true,
         isPublic: true,
-        allowSpectators: true,
         currentFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
         whiteTimeLeft: 900000, // 15 minutes
         blackTimeLeft: 900000, // 15 minutes
