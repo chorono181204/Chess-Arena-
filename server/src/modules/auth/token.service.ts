@@ -1,10 +1,10 @@
+import { JwtConfig } from '@config/types/config.type';
+import { TokenRepository } from '@modules/auth/token.repository';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { TokenRepository } from '@modules/auth/token.repository';
 import { AccessRefreshTokens, UserPayload } from './types/auth.types';
-import { JwtConfig } from '@config/types/config.type';
 
 @Injectable()
 export class TokenService {
@@ -29,6 +29,24 @@ export class TokenService {
         accessToken: _accessToken,
       };
     }
+
+    const accessToken = this.createJwtAccessToken(payload);
+  const refreshToken = this.createJwtRefreshToken(payload);
+
+  await Promise.all([
+    this.tokenRepository.saveAccessTokenToWhitelist({
+      userId: payload.id,
+      accessToken,
+      expireInSeconds: this.jwtConfig.jwtExpAccessToken,
+    }),
+    this.tokenRepository.saveRefreshTokenToWhitelist({
+      userId: payload.id,
+      refreshToken,
+      expireInSeconds: this.jwtConfig.jwtExpRefreshToken,
+    }),
+  ]);
+
+  return { accessToken, refreshToken };
   }
 
   async login(payload: UserPayload): Promise<AccessRefreshTokens> {
