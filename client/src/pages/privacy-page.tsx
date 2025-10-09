@@ -4,7 +4,7 @@ import { usePageTitle } from '@/lib/use-page-title'
 import { cn } from '@/lib/utils'
 import { ArrowLeft } from 'lucide-react'
 import type React from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 type ParagraphProps = React.PropsWithChildren<{ className?: string }>
 

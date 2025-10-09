@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { socketUrl } from '@/lib/env'
 import { MotiaStreamProvider } from '@motiadev/stream-client-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Route, Routes } from 'react-router'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AiGamePage } from './pages/ai-game-page'
 import { CreateGamePage } from './pages/create-game-page'
 import { ChessGamePage } from './pages/game-page'
@@ -35,23 +35,28 @@ function App() {
       <MotiaStreamProvider address={socketUrl}>
         <BrowserRouter>
           <AuthProvider>
-            <AppLayout>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/landing" element={<LandingPage />} />
-                <Route path="/login" element={<AppLayout showHeader={false}><LoginPage /></AppLayout>} />
-                <Route path="/lobby" element={<LobbyPage />} />
-                <Route path="/live-matches" element={<LiveMatchesPage />} />
-                <Route path="/game-history" element={<GameHistoryPage />} />
-                <Route path="/new" element={<CreateGamePage />} />
-                <Route path="/leaderboard" element={<LeaderboardPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/game/:gameId" element={<ChessGamePage />} />
-                <Route path="/ai-game/:id" element={<AiGamePage />} />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/privacy-policy" element={<PrivacyPage />} />
-              </Routes>
-            </AppLayout>
+            <Routes>
+              <Route path="/login" element={<AppLayout showHeader={false}><LoginPage /></AppLayout>} />
+              <Route
+                path="/"
+                element={
+                  <AppLayout>
+                    <HomePage />
+                  </AppLayout>
+                }
+              />
+              <Route path="/landing" element={<AppLayout><LandingPage /></AppLayout>} />
+              <Route path="/lobby" element={<AppLayout><LobbyPage /></AppLayout>} />
+              <Route path="/live-matches" element={<AppLayout><LiveMatchesPage /></AppLayout>} />
+              <Route path="/game-history" element={<AppLayout><GameHistoryPage /></AppLayout>} />
+              <Route path="/new" element={<AppLayout><CreateGamePage /></AppLayout>} />
+              <Route path="/leaderboard" element={<AppLayout><LeaderboardPage /></AppLayout>} />
+              <Route path="/profile" element={<AppLayout><ProfilePage /></AppLayout>} />
+              <Route path="/game/:gameId" element={<AppLayout><ChessGamePage /></AppLayout>} />
+              <Route path="/ai-game/:id" element={<AppLayout><AiGamePage /></AppLayout>} />
+              <Route path="/about" element={<AppLayout><AboutPage /></AppLayout>} />
+              <Route path="/privacy-policy" element={<AppLayout><PrivacyPage /></AppLayout>} />
+            </Routes>
           </AuthProvider>
         </BrowserRouter>
         <Toaster />

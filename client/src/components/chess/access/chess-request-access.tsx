@@ -1,7 +1,7 @@
 import { BaseButton } from '@/components/ui/base-button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth/use-auth'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 import { useRequestAccess } from './hooks/use-request-access'
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'

@@ -1,34 +1,56 @@
 import { apiClient } from '@/lib/auth/api-client'
 import { authApi } from '@/lib/auth/auth-api'
-import { AuthService } from '@/lib/auth/auth-service'
-import { getAuthParamsFromUrl, handleAuthError } from '@/lib/auth/auth-utils'
-import type { AuthError, SupabaseError } from '@/lib/auth/types'
+import { handleAuthError } from '@/lib/auth/auth-utils'
+import type { AuthError } from '@/lib/auth/types'
 import type { User } from '@/types/user'
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
 import { AuthContext } from './auth-context'
 
 const useUserState = () => {
-  // Mock user for testing UI
-  const [user, _setUser] = useState<User | null>({
-    id: 'test-user-123',
-    email: 'test@example.com',
-    name: 'Test User',
-    avatar: '/avatars/claude.png',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  })
+  const [user, _setUser] = useState<User | null>(null)
 
   const setUser = useCallback((user: User | null) => {
     _setUser(user)
-    localStorage.setItem('motia-user', JSON.stringify(user))
+    if (user) {
+      localStorage.setItem('motia-user', JSON.stringify(user))
+    } else {
+      localStorage.removeItem('motia-user')
+    }
   }, [])
 
-  // Disable localStorage check for testing
-  // useEffect(() => {
-  //   const localStorageUser = localStorage.getItem('motia-user')
-  //   setUser(localStorageUser ? JSON.parse(localStorageUser) : null)
-  // }, [setUser])
+  useEffect(() => {
+    const localStorageUser = localStorage.getItem('motia-user')
+    if (localStorageUser) {
+      try {
+        const parsed = JSON.parse(localStorageUser)
+        if (parsed) {
+          _setUser(parsed)
+          return
+        }
+      } catch {}
+      localStorage.removeItem('motia-user')
+    }
+
+    // Fallback: build user from JWT if present
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1] || 'e30='))
+        const nextUser: User = {
+          id: payload.id,
+          email: payload.email,
+          name: payload.name,
+          avatar: payload.avatar || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        _setUser(nextUser)
+        localStorage.setItem('motia-user', JSON.stringify(nextUser))
+      } catch (e) {
+        // ignore decode errors
+      }
+    }
+  }, [])
 
   return [user, setUser] as const
 }
@@ -37,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useUserState()
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [authError, setAuthError] = useState<AuthError | null>(null)
-  const navigate = useNavigate()
+  
 
   // Disable auth check for testing UI
   // useEffect(() => {
@@ -86,81 +108,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAuthError(null)
 
     try {
-      await AuthService.login(email, password)
-    } catch (error: unknown) {
-      console.error('Login error:', error)
-      const supabaseError = error as SupabaseError
-      setAuthError({
-        error: supabaseError.message || 'Failed to log in',
-        error_code: supabaseError.code || '',
-        error_description: '',
-      })
-      throw error
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+      const { accessToken, refreshToken } = await authApi.signin(email, password)
+      apiClient.setAuthToken(accessToken)
+      localStorage.setItem('refresh_token', refreshToken)
 
-  const verifyOtp = useCallback(async (email: string, token: string): Promise<void> => {
-    setIsLoading(true)
-    setAuthError(null)
-
-    try {
-      const { session } = await AuthService.verifyOtp(email, token)
-      if (session?.access_token) {
-        const result = await authApi.auth(session.access_token)
-        setUser(result.user)
+      // Decode minimal user info from JWT (header.payload.signature)
+      const payload = JSON.parse(atob(accessToken.split('.')[1] || 'e30='))
+      const nextUser: User = {
+        id: payload.id,
+        email: payload.email,
+        name: payload.name,
+        avatar: payload.avatar || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }
+      setUser(nextUser)
     } catch (error: unknown) {
-      console.error('Login error:', error)
-      const supabaseError = error as SupabaseError
-      setAuthError({
-        error: supabaseError.message || 'Failed to log in',
-        error_code: supabaseError.code || '',
-        error_description: '',
-      })
-      throw error
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  const loginWithMagicLink = useCallback(async (email: string): Promise<void> => {
-    setAuthError(null)
-    setIsLoading(true)
-
-    try {
-      await AuthService.loginWithMagicLink(email)
-    } catch (error: unknown) {
-      console.error('Magic link error:', error)
       setAuthError(handleAuthError(error))
       throw error
     } finally {
       setIsLoading(false)
     }
-  }, [])
-
-  const loginWithOAuth = useCallback(async (provider: 'google' | 'twitter'): Promise<void> => {
-    setIsLoading(true)
-    setAuthError(null)
-
-    try {
-      await AuthService.loginWithOAuth(provider)
-    } catch (error: unknown) {
-      console.error('OAuth login error:', error)
-      setAuthError(handleAuthError(error))
-      throw error
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+  }, [setUser])
 
   const logout = useCallback(async (): Promise<void> => {
     setIsLoading(true)
     setAuthError(null)
 
     try {
-      await AuthService.logout()
+      // Clear all auth-related data
+      apiClient.clearAuthToken()
+      localStorage.clear()
       setUser(null)
     } catch (error: unknown) {
       console.error('Logout error:', error)
@@ -170,8 +148,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [setUser])
 
-  // Mock authentication for testing UI
-  const isAuthenticated = true
+  const isAuthenticated = Boolean(user)
 
   const value = useMemo(
     () => ({
@@ -180,12 +157,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       authError,
       login,
-      loginWithMagicLink,
-      loginWithOAuth,
       logout,
-      verifyOtp,
     }),
-    [authError, isAuthenticated, isLoading, login, loginWithMagicLink, loginWithOAuth, logout, user],
+    [authError, isAuthenticated, isLoading, login, logout, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

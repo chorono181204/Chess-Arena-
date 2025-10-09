@@ -2,7 +2,7 @@ import { useAuth } from '@/lib/auth/use-auth'
 import { ChatBubbleAvatar } from '../ui/chat/chat-bubble'
 import { Button } from '../ui/button'
 import { Loader2, LogIn } from 'lucide-react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 export const AuthContainer = () => {
   const { user, isLoading, logout } = useAuth()

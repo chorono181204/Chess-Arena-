@@ -12,7 +12,7 @@ import {
   X
 } from 'lucide-react'
 import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useSound } from '@/lib/use-sound'
 
 interface NavItem {

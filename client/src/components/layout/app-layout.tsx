@@ -11,9 +11,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   showHeader = true 
 }) => {
   return (
-    <div className="min-h-screen bg-image-landing">
+    <div className="min-h-screen bg-image-landing overflow-y-auto">
       {showHeader && <AppHeader />}
-      <main className="flex-1">
+      <main className={showHeader ? "pt-16" : ""}>
         {children}
       </main>
     </div>

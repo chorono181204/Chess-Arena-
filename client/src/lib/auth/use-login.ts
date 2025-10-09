@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from './use-auth'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 type LoginState = {
   error: string | null
@@ -31,7 +31,7 @@ const formatErrorMessage = (error: AuthError): string => {
 }
 
 export const useLogin = () => {
-  const { loginWithOAuth, loginWithMagicLink, verifyOtp, authError, isAuthenticated, isLoading } = useAuth()
+  const { login, authError, isAuthenticated, isLoading } = useAuth()
   const [state, setState] = useState<LoginState>(INITIAL_STATE)
   const navigate = useNavigate()
 
@@ -47,46 +47,11 @@ export const useLogin = () => {
     }
   }, [isAuthenticated, navigate])
 
-  const handleLogin = async (provider: LoginProvider, options: { email?: string } = {}) => {
-    try {
-      setState((prev) => ({ ...prev, error: null, success: null }))
-
-      if (provider === 'email') {
-        if (!options.email?.trim()) {
-          throw new Error('Email is required')
-        }
-
-        await loginWithMagicLink(options.email)
-
-        setState((prev) => ({
-          ...prev,
-          success: {
-            title: 'Email sent',
-            description: 'Check your email for a magic link to sign in.',
-          },
-        }))
-      } else {
-        await loginWithOAuth(provider)
-
-        setState((prev) => ({
-          ...prev,
-          success: {
-            title: 'Please wait',
-            description: 'Redirecting to your provider...',
-          },
-        }))
-      }
-    } catch (error) {
-      setState((prev) => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Error logging in',
-      }))
-    }
-  }
+  const handleLogin = async (email: string, password: string) => login(email, password)
 
   return {
     handleLogin,
-    verifyOtp,
+    verifyOtp: async () => {},
     isAuthenticating: isLoading,
     error: state.error,
     successMessage: state.success,

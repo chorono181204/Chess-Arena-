@@ -7,8 +7,8 @@ type Props = PropsWithChildren<{
 
 export const Page: React.FC<Props> = ({ children, className }) => {
   return (
-    <div className="flex flex-col flex-1 gap-4 items-center justify-center w-screen h-dvh bg-image-landing">
-      <div className={cn('flex flex-col flex-1 gap-4 items-center justify-between w-full h-dvh', className)}>
+    <div className="flex flex-col flex-1 gap-4 items-center justify-center w-full min-h-screen bg-image-landing overflow-y-auto">
+      <div className={cn('flex flex-col flex-1 gap-4 items-center justify-between w-full', className)}>
         {children}
       </div>
     </div>
