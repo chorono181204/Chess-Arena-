@@ -5,7 +5,7 @@ import { MotiaPowered } from '@/components/motia-powered'
 import { BaseButton } from '@/components/ui/base-button'
 import { usePageTitle } from '@/lib/use-page-title'
 import { Trophy } from 'lucide-react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 export const LandingPage = () => {
   const navigate = useNavigate()
@@ -52,7 +52,7 @@ export const LandingPage = () => {
               </BaseButton>
             </div>
             <div className="flex flex-row gap-2 items-center justify-center w-full">
-              <BaseButton variant="outline" className="w-full flex-1" onClick={() => navigate('/new')}>
+              <BaseButton className="w-full flex-1" onClick={() => navigate('/new')}>
                 AI vs AI
               </BaseButton>
             </div>

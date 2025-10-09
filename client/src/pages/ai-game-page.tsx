@@ -6,7 +6,7 @@ import { useTrackEvent } from '@/lib/use-track-event'
 import type { AiModelProvider } from '@/types/ai-models'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export const AiGamePage = () => {
   const navigate = useNavigate()

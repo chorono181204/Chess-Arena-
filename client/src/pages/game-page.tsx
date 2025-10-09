@@ -1,7 +1,7 @@
 import { ChessGame } from '@/components/chess/chess-game'
 import { Page } from '@/components/page'
 import { usePageTitle } from '@/lib/use-page-title'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export const ChessGamePage = () => {
   const navigate = useNavigate()

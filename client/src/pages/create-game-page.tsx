@@ -1,7 +1,7 @@
 import { CreateGame } from '@/components/chess/create-game/create-game'
 import { Page } from '@/components/page'
 import { usePageTitle } from '@/lib/use-page-title'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 import { AuthGuard } from '../components/auth/auth-guard'
 
 export const CreateGamePage = () => {

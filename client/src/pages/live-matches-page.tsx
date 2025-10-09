@@ -4,7 +4,7 @@ import { BaseButton } from '@/components/ui/base-button'
 import { usePageTitle } from '@/lib/use-page-title'
 import type { LiveAiGames } from '@chessarena/types/live-ai-games'
 import { useStreamGroup } from '@motiadev/stream-client-react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 export const LiveMatchesPage = () => {
   const navigate = useNavigate()

@@ -13,7 +13,7 @@ import {
   Target,
   Award
 } from 'lucide-react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 export const HomePage = () => {
   const { user } = useAuth()
@@ -68,8 +68,8 @@ export const HomePage = () => {
   ]
 
   return (
-    <div className="flex flex-col gap-6 items-center justify-center w-full h-[calc(100vh-4rem)] p-6">
-      <div className="flex flex-col gap-6 items-center justify-center w-full max-w-6xl">
+    <div className="flex flex-col gap-6 items-center w-full min-h-screen p-6 py-8">
+      <div className="flex flex-col gap-6 items-center w-full max-w-6xl">
         {/* Welcome Section */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-white">
