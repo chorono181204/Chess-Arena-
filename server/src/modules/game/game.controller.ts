@@ -1,13 +1,13 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, BadRequestException, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { GameService } from './game.service';
 import { MatchmakingService } from './matchmaking.service';
-// import { AuthGuard } from '@modules/auth/auth.guard';
+import { Request } from 'express';
+import { QuickMatchRequestDto } from './dto/quick-match.dto';
 
 @ApiTags('games')
 @Controller('games')
-// @UseGuards(AuthGuard)
-// @ApiBearerAuth()
+@ApiBearerAuth()
 export class GameController {
   constructor(
     private readonly gameService: GameService,
@@ -16,10 +16,23 @@ export class GameController {
 
   @Post('quick-match')
   @ApiOperation({ summary: 'Find quick match' })
-  async findQuickMatch(@Body() body: any) {
-    // TODO: Get userId from JWT
-    const userId = body.userId;
-    return this.matchmakingService.findQuickMatch(userId, body.preferences);
+  @ApiBody({ type: QuickMatchRequestDto })
+  async findQuickMatch(@Body() body: QuickMatchRequestDto, @Req() req: Request) {
+    const userId = (req as any)?.user?.id;
+    const preferences = body?.preferences ?? {} as any;
+
+    if (!userId) {
+      throw new BadRequestException('userId là bắt buộc');
+    }
+    if (!preferences?.timeControl) {
+      throw new BadRequestException('preferences.timeControl là bắt buộc');
+    }
+    if (!preferences?.ratingType) {
+      throw new BadRequestException('preferences.ratingType là bắt buộc');
+    }
+
+    const result = await this.matchmakingService.findQuickMatch(userId, preferences);
+    return result;
   }
 
   @Post('cancel-match')

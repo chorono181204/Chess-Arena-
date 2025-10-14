@@ -9,8 +9,10 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @WebSocketGateway({
   cors: {
@@ -28,7 +30,11 @@ export class ChessGateway
   private logger: Logger = new Logger('ChessGateway');
   private connectedUsers = new Map<string, string>(); // socketId -> userId
 
-  constructor(private eventEmitter: EventEmitter2) {}
+  constructor(
+    private eventEmitter: EventEmitter2,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
   afterInit(server: Server) {
     this.logger.log('WebSocket Gateway initialized');
@@ -37,7 +43,7 @@ export class ChessGateway
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
     
-    // Get userId from handshake (assume JWT in query or headers)
+    // Get userId from handshake (JWT/auth/query)
     const userId = this.getUserIdFromSocket(client);
     if (userId) {
       this.connectedUsers.set(client.id, userId);
@@ -79,13 +85,16 @@ export class ChessGateway
       return { event: 'error', data: { message: 'Unauthorized' } };
     }
 
-    this.logger.log(`User ${userId} finding match: ${JSON.stringify(data)}`);
+    // Support both formats: { timeControl,... } or { event, data: { ... } }
+    const preferences = (data && data.data) ? data.data : data;
+
+    this.logger.log(`User ${userId} finding match: ${JSON.stringify(preferences)}`);
 
     // Emit event to matchmaking service
     this.eventEmitter.emit('matchmaking.find', {
       userId,
       socketId: client.id,
-      preferences: data,
+      preferences,
     });
 
     return { event: 'searching', data: { status: 'searching' } };
@@ -105,6 +114,46 @@ export class ChessGateway
     });
 
     return { event: 'cancelled', data: { status: 'cancelled' } };
+  }
+
+  @SubscribeMessage('match-accept')
+  handleMatchAccept(
+    @MessageBody() data: { proposalId: string } | { event?: string; data?: { proposalId: string } },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = this.connectedUsers.get(client.id);
+    if (!userId) return { event: 'error', data: { message: 'Unauthorized' } };
+
+    const body = (data && (data as any).data) ? (data as any).data : data;
+    const proposalId = (body as any)?.proposalId;
+
+    this.logger.log(`User ${userId} accepted proposal ${proposalId}`);
+    this.eventEmitter.emit('matchmaking.accept', {
+      userId,
+      socketId: client.id,
+      proposalId,
+    });
+    return { event: 'accepted', data: { proposalId } };
+  }
+
+  @SubscribeMessage('match-decline')
+  handleMatchDecline(
+    @MessageBody() data: { proposalId: string } | { event?: string; data?: { proposalId: string } },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = this.connectedUsers.get(client.id);
+    if (!userId) return { event: 'error', data: { message: 'Unauthorized' } };
+
+    const body = (data && (data as any).data) ? (data as any).data : data;
+    const proposalId = (body as any)?.proposalId;
+
+    this.logger.log(`User ${userId} declined proposal ${proposalId}`);
+    this.eventEmitter.emit('matchmaking.decline', {
+      userId,
+      socketId: client.id,
+      proposalId,
+    });
+    return { event: 'declined', data: { proposalId } };
   }
 
   // ==========================================
@@ -285,16 +334,26 @@ export class ChessGateway
   // ==========================================
 
   private getUserIdFromSocket(client: Socket): string | null {
-    // Extract userId from JWT token in handshake
-    const token = client.handshake.auth.token || client.handshake.query.token;
-    
-    if (!token) {
-      return null;
+    // 1) Try JWT from auth.token or Authorization header
+    const bearer = (client.handshake.headers['authorization'] as string) || '';
+    const authToken = client.handshake.auth?.token as string | undefined;
+    const token = authToken || (bearer.startsWith('Bearer ') ? bearer.slice(7) : undefined);
+
+    if (token) {
+      try {
+        const payload: any = this.jwtService.verify(token, {
+          secret: this.configService.get<string>('jwt.accessToken'),
+        });
+        if (payload?.id) return payload.id as string;
+      } catch (_) {
+        // ignore and fallback
+      }
     }
 
-    // TODO: Verify JWT and extract userId
-    // For now, return from query
-    return client.handshake.query.userId as string || null;
+    // 2) Fallback to auth.userId or query.userId
+    return (client.handshake.auth?.userId as string)
+      || (client.handshake.query.userId as string)
+      || null;
   }
 
   getConnectedUsers(): Map<string, string> {

@@ -16,28 +16,80 @@ export class MatchmakingProcessor {
     const { userId, preferences } = job.data;
 
     this.logger.log(`Processing find-match for user ${userId}`);
+    this.logger.log(`User preferences:`, {
+      timeControl: preferences.timeControl,
+      ratingType: preferences.ratingType,
+      isRated: preferences.isRated,
+      minRating: preferences.minRating,
+      maxRating: preferences.maxRating,
+    });
 
     // Get or create pool for this time control + rating type
     const poolKey = `${preferences.timeControl}-${preferences.ratingType}`;
+    this.logger.log(`Pool key: ${poolKey}`);
     
     if (!this.matchmakingPool.has(poolKey)) {
       this.matchmakingPool.set(poolKey, []);
+      this.logger.log(`Created new pool for key: ${poolKey}`);
     }
 
     const pool = this.matchmakingPool.get(poolKey);
+    this.logger.log(`Pool contents for ${poolKey}:`, pool.map(p => ({
+      userId: p.userId,
+      timeControl: p.preferences.timeControl,
+      ratingType: p.preferences.ratingType,
+      isRated: p.preferences.isRated,
+      minRating: p.preferences.minRating,
+      maxRating: p.preferences.maxRating,
+    })));
 
-    // Try to find a match in the pool
+    // Cleanup expired entries (> 60s)
+    const now = Date.now();
+    const MAX_WAIT_MS = 60_000;
+    for (let i = pool.length - 1; i >= 0; i--) {
+      const item: any = pool[i] as any;
+      if (item.__ts && now - item.__ts > MAX_WAIT_MS) {
+        pool.splice(i, 1);
+      }
+    }
+
+    // Try to find a match in the pool using interval overlap
     const match = pool.find((candidate) => {
-      // Check if candidate is compatible
-      if (candidate.userId === userId) return false;
-      if (candidate.preferences.isRated !== preferences.isRated) return false;
+      this.logger.debug(`Checking candidate ${candidate.userId}:`, {
+        candidateTimeControl: candidate.preferences.timeControl,
+        candidateRatingType: candidate.preferences.ratingType,
+        candidateIsRated: candidate.preferences.isRated,
+        userTimeControl: preferences.timeControl,
+        userRatingType: preferences.ratingType,
+        userIsRated: preferences.isRated,
+      });
 
-      // Rating range check
-      const userRating = preferences.minRating || 1200;
-      const candidateRating = candidate.preferences.minRating || 1200;
-      const ratingDiff = Math.abs(userRating - candidateRating);
+      if (candidate.userId === userId) {
+        this.logger.debug(`Skipping self: ${candidate.userId}`);
+        return false;
+      }
+      if (candidate.preferences.timeControl !== preferences.timeControl) {
+        this.logger.debug(`TimeControl mismatch: ${candidate.preferences.timeControl} vs ${preferences.timeControl}`);
+        return false;
+      }
+      if (candidate.preferences.ratingType !== preferences.ratingType) {
+        this.logger.debug(`RatingType mismatch: ${candidate.preferences.ratingType} vs ${preferences.ratingType}`);
+        return false;
+      }
+      if (candidate.preferences.isRated !== preferences.isRated) {
+        this.logger.debug(`IsRated mismatch: ${candidate.preferences.isRated} vs ${preferences.isRated}`);
+        return false;
+      }
 
-      return ratingDiff <= 200; // Max rating difference
+      // Elo window overlap check
+      const aMin = preferences.minRating ?? 1100;
+      const aMax = preferences.maxRating ?? 1300;
+      const bMin = candidate.preferences.minRating ?? 1100;
+      const bMax = candidate.preferences.maxRating ?? 1300;
+      const overlap = Math.max(0, Math.min(aMax, bMax) - Math.max(aMin, bMin));
+      
+      this.logger.debug(`Elo check: user[${aMin}-${aMax}] vs candidate[${bMin}-${bMax}], overlap=${overlap}`);
+      return overlap >= 1;
     });
 
     if (match) {
@@ -46,6 +98,11 @@ export class MatchmakingProcessor {
       pool.splice(index, 1);
 
       this.logger.log(`Match found: ${userId} vs ${match.userId}`);
+      this.logger.log(`Match details:`, {
+        poolKey,
+        userPreferences: preferences,
+        matchPreferences: match.preferences,
+      });
 
       // Emit match found event
       this.eventEmitter.emit('matchmaking.matched', {
@@ -55,15 +112,16 @@ export class MatchmakingProcessor {
 
       return { matched: true, opponent: match };
     } else {
-      // No match found, add to pool
+      // No match found, add to pool with timestamp
+      (job.data as any).__ts = now;
       pool.push(job.data);
 
       this.logger.log(`No match found for ${userId}, added to pool. Pool size: ${pool.length}`);
 
-      // Set timeout to expand search after 30 seconds
+      // Schedule periodic expansion (every 10s)
       setTimeout(() => {
         this.expandSearch(userId, poolKey);
-      }, 30000);
+      }, 10_000);
 
       return { matched: false, poolSize: pool.length };
     }
@@ -111,13 +169,14 @@ export class MatchmakingProcessor {
 
     this.logger.log(`Expanding search for ${userId}`);
 
-    // Expand rating range
-    if (user.preferences.minRating) {
-      user.preferences.minRating -= 100;
-    }
-    if (user.preferences.maxRating) {
-      user.preferences.maxRating += 100;
-    }
+    // Expand rating range with caps (±400 from center)
+    const center = ((user.preferences.minRating ?? 1200) + (user.preferences.maxRating ?? 1200)) / 2;
+    const currentMin = user.preferences.minRating ?? Math.floor(center - 100);
+    const currentMax = user.preferences.maxRating ?? Math.ceil(center + 100);
+    const nextMin = currentMin - 100;
+    const nextMax = currentMax + 100;
+    user.preferences.minRating = Math.max(center - 400, nextMin);
+    user.preferences.maxRating = Math.min(center + 400, nextMax);
 
     // Try to find match again with expanded range
     this.eventEmitter.emit('matchmaking.expand-search', { userId });
