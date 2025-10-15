@@ -49,8 +49,7 @@ export class MatchmakingEventListener {
   @OnEvent('matchmaking.expand-search')
   handleExpandSearch(payload: any) {
     this.logger.log(`Expanding search for user ${payload.userId}`);
-    
-    // TODO: Expand search criteria
+    // custom expand logic handled in processor
   }
 
   @OnEvent('matchmaking.accept')
@@ -58,33 +57,52 @@ export class MatchmakingEventListener {
     const key = `match:proposal:${payload.proposalId}`;
     const stateKey = `${key}:state`;
     const data = await this.redis.get(key);
-    if (!data) return;
+    if (!data) {
+      this.logger.warn(`Proposal not found or expired: ${payload.proposalId}`);
+      return;
+    }
     const stateRaw = (await this.redis.get(stateKey)) || '{}';
     const state = JSON.parse(stateRaw);
     state[payload.userId] = 'accepted';
     await this.redis.save({ key: stateKey, value: JSON.stringify(state), expireInSeconds: 30 });
 
     const { player1, player2 } = JSON.parse(data);
+    this.logger.log(`Accept state for ${payload.proposalId}:`, state);
+
     if (state[player1.userId] === 'accepted' && state[player2.userId] === 'accepted') {
-      const { minutes, increment } = this.parseTimeControl(player1.preferences.timeControl);
-      const isRated = !!player1.preferences.isRated;
-      const game = await this.prisma.game.create({
-        data: {
-          status: 'ACTIVE',
-          gameType: isRated ? 'RATED' : 'CASUAL',
-          timeControl: player1.preferences.timeControl,
-          isRated,
-          whitePlayerId: Math.random() < 0.5 ? player1.userId : player2.userId,
-          blackPlayerId: Math.random() < 0.5 ? player2.userId : player1.userId,
-          whiteTimeLeft: minutes * 60000,
-          blackTimeLeft: minutes * 60000,
-          timeIncrement: increment * 1000,
-          startedAt: new Date(),
-        },
-      });
-      this.gateway.emitToUser(player1.userId, 'game-start', { gameId: game.id });
-      this.gateway.emitToUser(player2.userId, 'game-start', { gameId: game.id });
-      await this.redis.deleteMany([key, stateKey]);
+      try {
+        const { minutes, increment } = this.parseTimeControl(player1.preferences.timeControl);
+        const isRated = !!player1.preferences.isRated;
+        const assignWhiteToP1 = Math.random() < 0.5;
+        const whitePlayerId = assignWhiteToP1 ? player1.userId : player2.userId;
+        const blackPlayerId = assignWhiteToP1 ? player2.userId : player1.userId;
+
+        this.logger.log(`Creating game for proposal ${payload.proposalId} | white=${whitePlayerId} black=${blackPlayerId}`);
+        const game = await this.prisma.game.create({
+          data: {
+            status: 'ACTIVE',
+            gameType: isRated ? 'RATED' : 'CASUAL',
+            timeControl: player1.preferences.timeControl,
+            isRated,
+            whitePlayerId,
+            blackPlayerId,
+            whiteTimeLeft: minutes * 60000,
+            blackTimeLeft: minutes * 60000,
+            timeIncrement: increment * 1000,
+            startedAt: new Date(),
+          },
+        });
+
+        this.logger.log(`Game created: ${game.id} | notifying players`);
+        this.gateway.emitToUser(player1.userId, 'game-start', { gameId: game.id });
+        this.gateway.emitToUser(player2.userId, 'game-start', { gameId: game.id });
+        await this.redis.deleteMany([key, stateKey]);
+      } catch (err: any) {
+        this.logger.error(`Failed to create game for proposal ${payload.proposalId}: ${err?.message}`);
+        // Notify both users about error (optional)
+        this.gateway.emitToUser(player1.userId, 'match-error', { message: 'Failed to create game' });
+        this.gateway.emitToUser(player2.userId, 'match-error', { message: 'Failed to create game' });
+      }
     }
   }
 
@@ -92,7 +110,10 @@ export class MatchmakingEventListener {
   async handleDecline(payload: { userId: string; proposalId: string }) {
     const key = `match:proposal:${payload.proposalId}`;
     const data = await this.redis.get(key);
-    if (!data) return;
+    if (!data) {
+      this.logger.warn(`Proposal not found or expired (decline): ${payload.proposalId}`);
+      return;
+    }
     const { player1, player2 } = JSON.parse(data);
     const other = payload.userId === player1.userId ? player2 : player1;
     this.gateway.emitToUser(other.userId, 'match-declined', { by: payload.userId });

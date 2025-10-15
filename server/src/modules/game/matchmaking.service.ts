@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@providers/prisma';
 import { MatchmakingQueue } from '@modules/queues/services/matchmaking-queue.service';
 import { RatingType } from '@prisma/client';
+import { ChessGateway } from '@modules/websocket/websocket.gateway';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class MatchmakingService {
@@ -10,6 +12,8 @@ export class MatchmakingService {
   constructor(
     private prisma: PrismaService,
     private matchmakingQueue: MatchmakingQueue,
+    private readonly gateway: ChessGateway,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // TODO: Implement matchmaking logic here
@@ -57,7 +61,7 @@ export class MatchmakingService {
       },
     });
 
-    let chosenGameId: string | null = null;
+    let chosen: { id: string; whitePlayerId: string } | null = null;
     for (const g of candidates) {
       const creatorRating = await this.prisma.rating.findUnique({
         where: { userId_ratingType: { userId: g.whitePlayerId, ratingType } },
@@ -65,30 +69,27 @@ export class MatchmakingService {
       });
       const oppRating = creatorRating?.rating ?? 1200;
       if (oppRating >= minRating && oppRating <= maxRating) {
-        chosenGameId = g.id;
+        chosen = { id: g.id, whitePlayerId: g.whitePlayerId };
         break;
       }
     }
 
-    // 3) Nếu có game phù hợp → join bằng cơ chế updateMany (tránh race)
-    if (chosenGameId) {
-      const joined = await this.prisma.$transaction(async (tx) => {
-        const updated = await tx.game.updateMany({
-          where: { id: chosenGameId, status: 'WAITING', blackPlayerId: null },
-          data: {
-            blackPlayerId: userId,
-            status: 'ACTIVE',
-            startedAt: new Date(),
-          },
-        });
-        if (updated.count === 0) return null; // Có thể đã bị người khác cướp mất
-        return tx.game.findUnique({ where: { id: chosenGameId } });
+    // 3) Nếu có game chờ phù hợp → KHÔNG activate ngay; phát event matched để đi qua accept/decline
+    if (chosen) {
+      this.eventEmitter.emit('matchmaking.matched', {
+        player1: {
+          userId,
+          preferences: { timeControl, ratingType, isRated, minRating, maxRating },
+        },
+        player2: {
+          userId: chosen.whitePlayerId,
+          preferences: { timeControl, ratingType, isRated, minRating, maxRating },
+        },
+        waitingGameId: chosen.id,
       });
 
-      if (joined) {
-        return { matched: true, game: joined };
-      }
-      // Nếu tới đây: có race, tiếp tục tạo phòng chờ
+      // Phản hồi ngay cho HTTP, WS sẽ lo phần tiếp theo
+      return { matched: false, waitingGameId: chosen.id, queued: false };
     }
 
     // 4) Không có game phù hợp → tạo phòng chờ
