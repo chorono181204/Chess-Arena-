@@ -28,7 +28,7 @@ export class PrismaService
 
     if (this.prismaServiceOptions.middlewares) {
       this.prismaServiceOptions.middlewares.forEach((middleware) =>
-        this.$use(middleware),
+        (this as any).$use(middleware),
       );
     }
   }

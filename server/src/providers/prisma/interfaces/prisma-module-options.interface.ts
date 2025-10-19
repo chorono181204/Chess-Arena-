@@ -31,7 +31,7 @@ export interface PrismaServiceOptions {
    *
    * See: https://www.prisma.io/docs/concepts/components/prisma-client/middleware
    */
-  middlewares?: Array<Prisma.Middleware>;
+  middlewares?: Array<any>;
 }
 
 export interface PrismaOptionsFactory {

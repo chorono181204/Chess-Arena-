@@ -19,6 +19,8 @@ import { WebSocketModule } from '@modules/websocket/websocket.module';
 import { EventsModule } from '@modules/events/events.module';
 import { QueueModule } from '@modules/queues/queue.module';
 import { GameModule } from '@modules/game/game.module';
+import { LeaderboardModule } from '@modules/leaderboard/leaderboard.module';
+import { HistoryModule } from '@modules/history/history.module';
 
 @Module({
   controllers: [],
@@ -42,6 +44,10 @@ import { GameModule } from '@modules/game/game.module';
     QueueModule,
     // Game module
     GameModule,
+    // Leaderboard module
+    LeaderboardModule,
+    // History module
+    HistoryModule,
     // CaslModule.forRoot<Roles>({
     //   // Role to grant full access, optional
     //   superuserRole: Roles.superadmin,
